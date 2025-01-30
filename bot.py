@@ -2,21 +2,27 @@ import asyncio
 import logging
 import os
 import re
+import threading
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import Message
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.filters import Command
 from dotenv import load_dotenv
 from http.server import HTTPServer, BaseHTTPRequestHandler
-import threading
 
 # Загружаем переменные окружения
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-CHAT_ID = os.getenv("CHAT_ID")  # Теперь без int(), если ID не число, это не вызовет ошибку
+CHAT_ID = os.getenv("CHAT_ID")
 
-# Настройки бота
+# Проверяем, является ли CHAT_ID числом (если да, приводим к int)
+if CHAT_ID and CHAT_ID.lstrip("-").isdigit():
+    CHAT_ID = int(CHAT_ID)
+
+# Настройки логирования
 logging.basicConfig(level=logging.INFO)
+
+# Инициализация бота
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
 
@@ -54,7 +60,7 @@ async def handle_message(message: Message):
     """Обработчик входящих сообщений"""
     text = message.text.lower()
 
-    # Проверяем наличие "плохих слов" по нашим регулярным шаблонам
+    # Проверяем наличие "плохих слов" по регулярным шаблонам
     if any(re.search(pattern, text, re.IGNORECASE) for pattern in BAD_PATTERNS):
         await message.answer("Пожалуйста без мата и оскорблений, давайте по существу.")
         return
@@ -62,21 +68,22 @@ async def handle_message(message: Message):
     # Благодарим пользователя
     await message.answer("Спасибо, информация принята")
 
-    # Пересылаем сообщение в группу и отлавливаем ошибки
-    try:
-        sent_message = await bot.send_message(
-            CHAT_ID,
-            f"💡 Новая идея от @{message.from_user.username}:\n\n{message.text}"
-        )
-        logging.info(f"Сообщение успешно отправлено в группу! ID: {sent_message.message_id}")
-    except Exception as e:
-        logging.error(f"Ошибка при отправке сообщения в группу: {e}")
+    # Пересылаем сообщение в группу
+    if CHAT_ID:
+        try:
+            sent_message = await bot.send_message(
+                CHAT_ID,
+                f"💡 Новая идея от @{message.from_user.username}:\n\n{message.text}"
+            )
+            logging.info(f"Сообщение успешно отправлено в группу! ID: {sent_message.message_id}")
+        except Exception as e:
+            logging.error(f"Ошибка при отправке сообщения в группу: {e}")
 
-async def main():
+async def run_bot():
     """Функция запуска бота"""
     await dp.start_polling(bot)
 
-
+# Фиктивный HTTP-сервер для Render
 class StubServer(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
@@ -84,13 +91,13 @@ class StubServer(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(b"Bot is running.")
 
-
 def run_http_server():
+    """Запускаем HTTP-сервер на порту 10000, чтобы Render не отключал процесс"""
     server = HTTPServer(("0.0.0.0", 10000), StubServer)
     server.serve_forever()
 
 if __name__ == "__main__":
-    # Запускаем фиктивный HTTP-сервер в отдельном потоке
+    # Запускаем HTTP-сервер в отдельном потоке
     threading.Thread(target=run_http_server, daemon=True).start()
 
     # Запускаем бота
