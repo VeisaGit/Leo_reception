@@ -74,17 +74,22 @@ async def main():
     """Функция запуска бота"""
     await dp.start_polling(bot)
 
+
+class StubServer(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        self.wfile.write(b"Bot is running.")
+
+
+def run_http_server():
+    server = HTTPServer(("0.0.0.0", 10000), StubServer)
+    server.serve_forever()
+
 if __name__ == "__main__":
-    import threading
-    from http.server import SimpleHTTPRequestHandler, HTTPServer
-
-    # Фиктивный HTTP-сервер для Render
-    def run_http_server():
-        server = HTTPServer(("0.0.0.0", 10000), SimpleHTTPRequestHandler)
-        server.serve_forever()
-
-    # Запускаем HTTP-сервер в фоновом потоке
+    # Запускаем фиктивный HTTP-сервер в отдельном потоке
     threading.Thread(target=run_http_server, daemon=True).start()
 
     # Запускаем бота
-    asyncio.run(run())
+    asyncio.run(run_bot())
