@@ -75,4 +75,16 @@ async def main():
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    import threading
+    from http.server import SimpleHTTPRequestHandler, HTTPServer
+
+    # Фиктивный HTTP-сервер для Render
+    def run_http_server():
+        server = HTTPServer(("0.0.0.0", 10000), SimpleHTTPRequestHandler)
+        server.serve_forever()
+
+    # Запускаем HTTP-сервер в фоновом потоке
+    threading.Thread(target=run_http_server, daemon=True).start()
+
+    # Запускаем бота
+    asyncio.run(run())
