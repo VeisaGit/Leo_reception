@@ -7,6 +7,8 @@ from aiogram.types import Message
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.filters import Command
 from dotenv import load_dotenv
+from http.server import HTTPServer, BaseHTTPRequestHandler
+import threading
 
 # Загружаем переменные окружения
 load_dotenv()
