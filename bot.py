@@ -3,6 +3,7 @@ import logging
 import os
 import re
 import threading
+import aiohttp
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import Message
 from aiogram.fsm.storage.memory import MemoryStorage
@@ -79,8 +80,20 @@ async def handle_message(message: Message):
         except Exception as e:
             logging.error(f"Ошибка при отправке сообщения в группу: {e}")
 
+async def keep_alive():
+    """Функция отправки пинга Telegram API раз в 5 минут, чтобы Render не отключал процесс"""
+    while True:
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get("https://api.telegram.org") as resp:
+                    logging.info(f"Пинг Telegram API: {resp.status}")
+        except Exception as e:
+            logging.warning(f"Ошибка пинга: {e}")
+        await asyncio.sleep(300)  # Пауза 5 минут
+
 async def run_bot():
     """Функция запуска бота"""
+    asyncio.create_task(keep_alive())  # Запуск функции keep_alive() в фоне
     await dp.start_polling(bot)
 
 # Фиктивный HTTP-сервер для Render
